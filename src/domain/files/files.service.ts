@@ -37,7 +37,7 @@ export class FilesService {
       }),
     ).map((data) => ({
       data,
-      meta: getPaginationMeta(data[0].total, page, limit),
+      meta: getPaginationMeta(data[0]?.total ?? 0, page, limit),
     }));
   }
 }
