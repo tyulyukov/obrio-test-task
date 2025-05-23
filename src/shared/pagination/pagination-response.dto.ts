@@ -1,4 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
+import { PaginatedResult } from '@shared/pagination/paginated-result.type';
 
 export class PaginationMetaResponseDto {
   @ApiProperty({
@@ -52,7 +53,7 @@ export class PaginatedResponseDto<T> {
   })
   meta: PaginationMetaResponseDto;
 
-  constructor({ data, meta }: { data: T[]; meta: PaginationMetaResponseDto }) {
+  constructor({ data, meta }: PaginatedResult<T>) {
     this.data = data;
     this.meta = meta;
   }

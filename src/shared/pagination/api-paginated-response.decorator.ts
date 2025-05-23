@@ -3,7 +3,7 @@ import { ApiExtraModels, ApiOkResponse, getSchemaPath } from '@nestjs/swagger';
 import {
   PaginatedResponseDto,
   PaginationMetaResponseDto,
-} from '@shared/dto/pagination-response.dto';
+} from '@shared/pagination/pagination-response.dto';
 
 /**
  * Custom decorator to standardize paginated API responses.

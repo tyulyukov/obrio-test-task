@@ -5,7 +5,7 @@ import { Logger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
 import { ApiModule } from './api.module';
 import { apiReference } from '@scalar/nestjs-api-reference';
-import { NodeEnvironment } from '@shared/enums/node-env.enum';
+import { NodeEnvironment } from '@shared/env/node-env.enum';
 
 async function bootstrap() {
   const app = await NestFactory.create(ApiModule, {

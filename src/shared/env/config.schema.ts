@@ -1,5 +1,5 @@
 import Joi from 'joi';
-import { NodeEnvironment } from '@shared/enums/node-env.enum';
+import { NodeEnvironment } from '@shared/env/node-env.enum';
 
 export const configValidationSchema = Joi.object({
   // API

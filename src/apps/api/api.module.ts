@@ -3,8 +3,8 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { LoggerModule } from 'nestjs-pino';
 import { FilesModule } from './files/files.module';
 import { DatabaseModule } from '@infra/database/database.module';
-import { configValidationSchema } from '@shared/config/config.schema';
-import { NodeEnvironment } from '@shared/enums/node-env.enum';
+import { configValidationSchema } from '@shared/env/config.schema';
+import { NodeEnvironment } from '@shared/env/node-env.enum';
 
 @Module({
   imports: [

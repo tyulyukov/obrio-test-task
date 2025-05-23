@@ -1,10 +1,16 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  InternalServerErrorException,
+  Logger,
+  Query,
+} from '@nestjs/common';
 import { ApiOperation, ApiTags } from '@nestjs/swagger';
-import { FilesService } from './files.service';
+import { FilesService } from '@domain/files/files.service';
 import { FileResponseDto } from './dto/file-response.dto';
-import { PaginatedResponseDto } from '@shared/dto/pagination-response.dto';
-import { PaginationQueryDto } from '@shared/dto/pagination-query.dto';
-import { ApiPaginatedResponse } from '@shared/decorators/api-paginated-response.decorator';
+import { ApiPaginatedResponse } from '@shared/pagination/api-paginated-response.decorator';
+import { PaginationQueryDto } from '@shared/pagination/pagination-query.dto';
+import { PaginatedResponseDto } from '@shared/pagination/pagination-response.dto';
 
 @ApiTags('files')
 @Controller({
@@ -12,6 +18,8 @@ import { ApiPaginatedResponse } from '@shared/decorators/api-paginated-response.
   version: '1',
 })
 export class FilesController {
+  private readonly logger = new Logger(FilesController.name);
+
   constructor(private readonly filesService: FilesService) {}
 
   @Get()
@@ -20,10 +28,22 @@ export class FilesController {
   async findAll(
     @Query() paginationQuery: PaginationQueryDto,
   ): Promise<PaginatedResponseDto<FileResponseDto>> {
-    const { data, meta } = await this.filesService.findAll(paginationQuery);
-    return new PaginatedResponseDto({
-      data: data.map((e) => new FileResponseDto(e)),
-      meta,
-    });
+    const result = await this.filesService.findAll(paginationQuery);
+
+    return result.match(
+      ({ data, meta }) => {
+        return new PaginatedResponseDto({
+          data: data.map((e) => new FileResponseDto(e)),
+          meta,
+        });
+      },
+      (e) => {
+        switch (e.type) {
+          case 'DATABASE_ERROR':
+            this.logger.error(e.error);
+            throw new InternalServerErrorException();
+        }
+      },
+    );
   }
 }
