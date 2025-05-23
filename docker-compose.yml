@@ -1,0 +1,30 @@
+services:
+  db:
+    image: postgres:17.5-alpine
+    restart: always
+    command: postgres -c 'max_connections=400'
+    ports:
+      - '${POSTGRES_PORT}:5432'
+    env_file:
+      - './.env'
+    healthcheck:
+      test: [ 'CMD', 'pg_isready', '-U', '${POSTGRES_USER}' ]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+    environment:
+      POSTGRES_DB: '${POSTGRES_DB}'
+      POSTGRES_USER: '${POSTGRES_USER}'
+      POSTGRES_PASSWORD: '${POSTGRES_PASSWORD}'
+    volumes:
+      - ./db/postgres:/var/lib/postgresql/data:z
+
+  redis:
+    image: redis:latest
+    restart: always
+    ports:
+      - '6379:6379'
+    command: redis-server /usr/local/etc/redis/redis.conf --bind 0.0.0.0 --protected-mode no
+    volumes:
+      - ./db/redis:/data
+      - ./redis.conf:/usr/local/etc/redis/redis.conf
