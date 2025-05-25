@@ -1,5 +1,7 @@
 import {
+  BadRequestException,
   Body,
+  ConflictException,
   Controller,
   Get,
   InternalServerErrorException,
@@ -57,6 +59,14 @@ export class FilesController {
     description: 'The files have been successfully scheduled for upload.',
     type: [FileResponseDto],
   })
+  @ApiResponse({
+    status: 400,
+    description: 'At least one of the provided URLs is not valid.',
+  })
+  @ApiResponse({
+    status: 409,
+    description: 'One or more files already exist in the database.',
+  })
   async uploadFiles(
     @Body() uploadFilesDto: UploadFilesDto,
   ): Promise<FileResponseDto[]> {
@@ -74,6 +84,14 @@ export class FilesController {
           case 'QUEUE_ERROR':
             this.logger.error(e.error);
             throw new InternalServerErrorException();
+          case 'FILE_ALREADY_EXISTS':
+            throw new ConflictException(
+              `Files with the following URLs already exist: ${e.urls.join(', ')}`,
+            );
+          case 'URL_NOT_VALID':
+            throw new BadRequestException(
+              `At lest one of the provided URLs is not valid`,
+            );
         }
       },
     );

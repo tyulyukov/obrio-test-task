@@ -15,6 +15,13 @@
       "when": 1748169165623,
       "tag": "0001_update_files",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1748197564244,
+      "tag": "0002_add_file_urls_uniqueness",
+      "breakpoints": true
     }
   ]
 }
