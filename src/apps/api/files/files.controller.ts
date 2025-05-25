@@ -1,16 +1,19 @@
 import {
+  Body,
   Controller,
   Get,
   InternalServerErrorException,
   Logger,
+  Post,
   Query,
 } from '@nestjs/common';
-import { ApiOperation, ApiTags } from '@nestjs/swagger';
+import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FilesService } from '@domain/files/files.service';
 import { FileResponseDto } from './dto/file-response.dto';
 import { ApiPaginatedResponse } from '@shared/pagination/api-paginated-response.decorator';
 import { PaginationQueryDto } from '@shared/pagination/pagination-query.dto';
 import { PaginatedResponseDto } from '@shared/pagination/pagination-response.dto';
+import { UploadFilesDto } from './dto/upload-files.dto';
 
 @ApiTags('files')
 @Controller({
@@ -40,6 +43,35 @@ export class FilesController {
       (e) => {
         switch (e.type) {
           case 'DATABASE_ERROR':
+            this.logger.error(e.error);
+            throw new InternalServerErrorException();
+        }
+      },
+    );
+  }
+
+  @Post()
+  @ApiOperation({ summary: 'Upload files from URLs' })
+  @ApiResponse({
+    status: 201,
+    description: 'The files have been successfully scheduled for upload.',
+    type: [FileResponseDto],
+  })
+  async uploadFiles(
+    @Body() uploadFilesDto: UploadFilesDto,
+  ): Promise<FileResponseDto[]> {
+    const result = await this.filesService.uploadFiles(uploadFilesDto);
+
+    return result.match(
+      (files) => {
+        return files.map((file) => new FileResponseDto(file));
+      },
+      (e) => {
+        switch (e.type) {
+          case 'DATABASE_ERROR':
+            this.logger.error(e.error);
+            throw new InternalServerErrorException();
+          case 'QUEUE_ERROR':
             this.logger.error(e.error);
             throw new InternalServerErrorException();
         }

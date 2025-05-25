@@ -1,7 +1,7 @@
 import { timestamp } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 
-export const timestamps = {
+export const timestampsColumns = {
   createdAt: timestamp({ withTimezone: true, mode: 'string' })
     .default(sql`(now() AT TIME ZONE 'utc'::text)`)
     .notNull(),

@@ -3,19 +3,19 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import { Logger } from 'nestjs-pino';
 import { ConfigService } from '@nestjs/config';
-import { ApiModule } from './api.module';
+import { AppModule } from './app.module';
 import { apiReference } from '@scalar/nestjs-api-reference';
 import { NodeEnvironment } from '@shared/env/node-env.enum';
 
 async function bootstrap() {
-  const app = await NestFactory.create(ApiModule, {
+  const app = await NestFactory.create(AppModule, {
     bufferLogs: true,
   });
 
   const configService = app.get(ConfigService);
   const logger = app.get(Logger);
 
-  const port = configService.getOrThrow<number>('PORT');
+  const port = configService.getOrThrow<number>('API_PORT');
   const nodeEnv = configService.getOrThrow<NodeEnvironment>('NODE_ENV');
 
   app.enableCors();

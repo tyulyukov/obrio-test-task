@@ -1,7 +1,17 @@
+import { Module } from '@nestjs/common';
 import { FilesService } from './files.service';
-import { NodePgDatabase } from 'drizzle-orm/node-postgres';
-import { Schema } from '@infra/database/schema';
+import { DatabaseModule } from '@infra/database/database.module';
+import { BullModule } from '@nestjs/bullmq';
+import { QueueName } from '@shared/constants/queue-name.enum';
 
-export const createFilesService = (db: NodePgDatabase<Schema>): FilesService => {
-  return new FilesService(db);
-};
+@Module({
+  imports: [
+    DatabaseModule,
+    BullModule.registerQueue({
+      name: QueueName.UPLOAD_FILE,
+    }),
+  ],
+  providers: [FilesService],
+  exports: [FilesService],
+})
+export class FilesModule {}

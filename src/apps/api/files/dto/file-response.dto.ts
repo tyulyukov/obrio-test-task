@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { SelectFile } from '@infra/database/schema/files';
+import { File } from '@domain/files/entities/file.entity';
 
 export class FileResponseDto {
   @ApiProperty()
@@ -12,8 +12,12 @@ export class FileResponseDto {
 
   @ApiProperty({
     description: 'Actual URL of the file',
+    nullable: true,
   })
-  url: string;
+  url: string | null;
+
+  @ApiProperty()
+  isUploaded: boolean;
 
   @ApiProperty()
   createdAt: string;
@@ -21,10 +25,11 @@ export class FileResponseDto {
   @ApiProperty()
   updatedAt: string;
 
-  constructor(file: SelectFile) {
+  constructor(file: File) {
     this.id = file.id;
     this.originalUrl = file.originalUrl;
     this.url = file.url;
+    this.isUploaded = !!file.url;
     this.createdAt = file.createdAt;
     this.updatedAt = file.updatedAt;
   }
