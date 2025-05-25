@@ -29,19 +29,38 @@ export class GoogleDriveProvider implements StorageProvider {
       body: file instanceof Buffer ? Readable.from(file) : file,
     };
 
-    const res = await this.drive.files.create({
+    const createFileResponse = await this.drive.files.create({
       requestBody: {
         name: filename,
         mimeType,
       },
       media,
+      fields: 'id',
+    });
+
+    const fileId = createFileResponse.data.id;
+
+    if (!fileId) {
+      throw new Error('Google Drive upload failed (no file id returned)');
+    }
+
+    await this.drive.permissions.create({
+      fileId,
+      requestBody: {
+        role: 'reader',
+        type: 'anyone',
+      },
+    });
+
+    const getFileResponse = await this.drive.files.get({
+      fileId,
       fields: 'webViewLink',
     });
 
-    if (!res.data.webViewLink) {
+    if (!getFileResponse.data.webViewLink) {
       throw new Error('Google Drive upload failed (no file url returned)');
     }
 
-    return res.data.webViewLink;
+    return getFileResponse.data.webViewLink;
   }
 }

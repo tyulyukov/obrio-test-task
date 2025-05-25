@@ -6,16 +6,19 @@ import {
   Get,
   InternalServerErrorException,
   Logger,
+  NotFoundException,
+  Param,
   Post,
   Query,
 } from '@nestjs/common';
 import { ApiOperation, ApiResponse, ApiTags } from '@nestjs/swagger';
 import { FilesService } from '@domain/files/files.service';
-import { FileResponseDto } from './dto/file-response.dto';
+import { FileResponseDto } from './dto/file.response.dto';
 import { ApiPaginatedResponse } from '@shared/pagination/api-paginated-response.decorator';
 import { PaginationQueryDto } from '@shared/pagination/pagination-query.dto';
 import { PaginatedResponseDto } from '@shared/pagination/pagination-response.dto';
 import { UploadFilesDto } from './dto/upload-files.dto';
+import { FindFileByIdParamsDto } from '@api/files/dto/find-file-by-id.params.dto';
 
 @ApiTags('files')
 @Controller({
@@ -52,7 +55,39 @@ export class FilesController {
     );
   }
 
-  @Post()
+  @Get(':id')
+  @ApiOperation({ summary: 'Get a file by ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'The file was found',
+    type: FileResponseDto,
+  })
+  @ApiResponse({
+    status: 404,
+    description: 'File not found',
+  })
+  async findById(
+    @Param() { id }: FindFileByIdParamsDto,
+  ): Promise<FileResponseDto> {
+    const result = await this.filesService.getFileById(id);
+
+    return result.match(
+      (file) => {
+        return new FileResponseDto(file);
+      },
+      (e) => {
+        switch (e.type) {
+          case 'DATABASE_ERROR':
+            this.logger.error(e.error);
+            throw new InternalServerErrorException();
+          case 'FILE_NOT_FOUND':
+            throw new NotFoundException(`File with ID ${id} not found`);
+        }
+      },
+    );
+  }
+
+  @Post('upload-multiple')
   @ApiOperation({ summary: 'Upload files from URLs' })
   @ApiResponse({
     status: 201,

@@ -3,7 +3,7 @@ import { StorageOptions, StorageProvider } from './storage.interface';
 import { ResultAsync } from 'neverthrow';
 import { Readable } from 'stream';
 import Bottleneck from 'bottleneck';
-import { RedisOptions } from 'bullmq';
+import Redis from 'ioredis';
 
 export type UploadFileError = { type: 'UPLOAD_ERROR'; error: unknown };
 
@@ -18,17 +18,22 @@ export class StorageService {
     this.limiter = new Bottleneck({
       maxConcurrent: options.bottleneck.maxConcurrent,
       minTime: options.bottleneck.minTime,
-      datastore: 'redis',
+      Redis,
+      datastore: 'ioredis',
+      clearDatastore: false,
       clientOptions: {
-        host: options.redis.host,
-        port: options.redis.port,
+        ...(options.redis.tlsEnabled
+          ? {
+              tls: {
+                host: options.redis.host,
+                port: options.redis.port,
+              },
+            }
+          : { host: options.redis.host, port: options.redis.port }),
+        db: options.redis.db,
         username: options.redis.user,
         password: options.redis.password,
-        db: options.redis.db,
-        tls: options.redis.tlsEnabled
-          ? { rejectUnauthorized: false }
-          : undefined,
-      } as RedisOptions,
+      },
       id: 'google-drive-limiter',
     });
   }
