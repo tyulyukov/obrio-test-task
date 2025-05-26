@@ -25,42 +25,22 @@ export class GoogleDriveProvider implements StorageProvider {
     filename: string,
     mimeType = 'application/octet-stream',
   ): Promise<string> {
-    const media = {
-      body: file instanceof Buffer ? Readable.from(file) : file,
-    };
-
-    const createFileResponse = await this.drive.files.create({
-      requestBody: {
-        name: filename,
-        mimeType,
-      },
-      media,
-      fields: 'id',
+    const { data } = await this.drive.files.create({
+      uploadType: 'resumable',
+      fields: 'id,webViewLink',
+      requestBody: { name: filename, mimeType },
+      media: { mimeType, body: file },
     });
 
-    const fileId = createFileResponse.data.id;
-
-    if (!fileId) {
-      throw new Error('Google Drive upload failed (no file id returned)');
+    if (!data.id || !data.webViewLink) {
+      throw new Error('drive upload failed');
     }
 
     await this.drive.permissions.create({
-      fileId,
-      requestBody: {
-        role: 'reader',
-        type: 'anyone',
-      },
+      fileId: data.id,
+      requestBody: { role: 'reader', type: 'anyone' },
     });
 
-    const getFileResponse = await this.drive.files.get({
-      fileId,
-      fields: 'webViewLink',
-    });
-
-    if (!getFileResponse.data.webViewLink) {
-      throw new Error('Google Drive upload failed (no file url returned)');
-    }
-
-    return getFileResponse.data.webViewLink;
+    return data.webViewLink;
   }
 }

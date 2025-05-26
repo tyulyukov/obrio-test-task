@@ -4,6 +4,7 @@ import { Job } from 'bullmq';
 import { Logger } from '@nestjs/common';
 import { StorageService } from '@infra/storage/storage.service';
 import { FilesService } from '@domain/files/files.service';
+import { Readable } from 'stream';
 
 export interface UploadFileJobData {
   fileId: string;
@@ -45,8 +46,8 @@ export class UploadFileConsumer extends WorkerHost {
         );
       }
 
-      const arrayBuffer = await response.arrayBuffer();
-      const buffer = Buffer.from(arrayBuffer);
+      // convert WHATWG stream
+      const bodyStream = Readable.fromWeb(response.body as any);
 
       const filename = `${Date.now()}-${file.id}`;
       const contentType = response.headers.get('content-type') || undefined;
@@ -60,8 +61,9 @@ export class UploadFileConsumer extends WorkerHost {
         'Uploading file to Google Drive',
       );
 
-      const uploadResult = await this.storageService
-        .upload(buffer, filename, contentType)
+      // pass the stream straight to the Google Drive API without saving the whole file into RAM
+      const driveUrl = await this.storageService
+        .upload(bodyStream, filename, contentType)
         .match(
           (url) => url,
           (error) => {
@@ -69,15 +71,14 @@ export class UploadFileConsumer extends WorkerHost {
           },
         );
 
-      this.logger.log({ file, uploadResult }, 'File uploaded successfully');
+      this.logger.log({ file, driveUrl }, 'File uploaded successfully');
 
-      // Update the file.url with the url returned by the storage service
-      await this.filesService.updateFileUrl(fileId, uploadResult).match(
+      await this.filesService.updateFileUrl(fileId, driveUrl).match(
         () => {
           this.logger.log(
             {
               fileId,
-              url: uploadResult,
+              url: driveUrl,
             },
             `File record updated with new URL`,
           );
