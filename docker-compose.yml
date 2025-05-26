@@ -1,10 +1,10 @@
 services:
-  db:
+  postgres:
     image: postgres:17.5-alpine
     restart: always
     command: postgres -c 'max_connections=400'
     ports:
-      - '${POSTGRES_PORT}:5432'
+      - '5432:5432'
     env_file:
       - './.env'
     healthcheck:
@@ -28,3 +28,47 @@ services:
     volumes:
       - ./db/redis:/data
       - ./redis.conf:/usr/local/etc/redis/redis.conf
+
+  api:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./src/apps/api/Dockerfile
+    volumes:
+      - ./src:/usr/src/app/src
+    links:
+      - postgres:postgres
+      - redis:redis
+    depends_on:
+      - postgres
+      - redis
+#    ports:
+#      - ${API_PORT}:${API_PORT}
+    env_file: .env
+
+  nginx:
+    image: nginx:alpine
+    restart: always
+    ports:
+      - "${API_PORT}:80"
+    volumes:
+      - ./nginx.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - api
+
+  processor:
+    restart: always
+    build:
+      context: .
+      dockerfile: ./src/apps/processor/Dockerfile
+    volumes:
+      - ./src:/usr/src/app/src
+    links:
+      - postgres:postgres
+      - redis:redis
+    depends_on:
+      - postgres
+      - redis
+#    ports:
+#      - ${PROCESSOR_PORT}:${PROCESSOR_PORT}
+    env_file: .env

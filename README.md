@@ -1,123 +1,83 @@
-# Files API
+# Files Service
 
-TODO:
-[] refactor configs
-
+**scalable file upload platform built with Nest.js. + TypeScript, PostgreSQL/DrizzleORM, Redis, BullMQ, Bottleneck, neverthrow and Google Drive API storage integration**
 
 ---
 
-A Nest.js application for managing files with PostgreSQL and DrizzleORM.
-
-## Features
-
-- RESTful API for managing files
-- PostgreSQL database with DrizzleORM
-- Pagination support
-- Request throttling
-- Swagger API documentation
-- Pino logger
-- Environment configuration validation
-
-## Project Structure
-
-The project follows a clean architecture approach with the following structure:
-
-- `src/apps/api`: API-specific code (controllers, modules)
-- `src/domain`: Domain entities and business logic
-- `src/infra`: Infrastructure code (database, external services)
-- `src/shared`: Shared utilities and common code
-
-## Prerequisites
-
-- Node.js (v16 or higher)
-- PostgreSQL (v12 or higher)
-
-## Installation
-
-1. Clone the repository:
+## tl;dr
 
 ```bash
-git clone <repository-url>
-cd obrio-test-task
-```
-
-2. Install dependencies:
-
-```bash
-npm install
-```
-
-3. Create a `.env` file based on the `.env.example` file:
-
-```bash
+npm i
 cp .env.example .env
+docker compose up --scale api=3 --scale processor=3 -d
+docker compose exec api npm run db:migrate
 ```
 
-4. Update the `.env` file with your PostgreSQL credentials.
+---
 
-5. Create the database:
+## architecture
 
-```bash
-createdb obrio_files
+```mermaid
+flowchart LR
+    subgraph apps [EntryPoints]
+        api[(API xN)]
+        proc[(Processor xN)]
+        nginx[(nginx LB)]
+    end
+    subgraph domain_layer [Domain]
+        files_service[FilesService]
+    end
+    subgraph infra_layer [Infrastructure]
+        drizzle[(PostgreSQL + Drizzle)]
+        redis[(Redis)]
+        drive[(Google Drive)]
+    end
+    browser((Client)) -->|HTTPS| nginx --> api
+    api --->|HTTP REST| files_service
+    proc --> files_service
+    files_service <-->|SQL| drizzle
+    files_service <-->|jobs| redis
+    proc --->|upload| drive
 ```
 
-6. Generate and run migrations:
+* **apps** - `apps/api` (REST) and `apps/processor` (BullMQ consumer) are pure Nest.js modules - they only deal with http-related stuff and user input validation and call domain services.
+* **domain layer** - `domain` contains all business logic. They are almost framework‑agnostic (Nest.js DI stuff could be dropped, but I kept it there for the sake of simplicity) and error-prone due to the use of neverthrow, which prevents us from throwing errors at all and makes us handle all the cases as well.
+* **infrastructure** - `infra` integrates all external services (DB, Google Drive, Redis, BullMQ, Bottleneck).
+* **shared** - env validation, pagination utilities, constants, helpers.
 
-```bash
-npm run db:generate
-npm run db:migrate
-```
+### why it’s flexible
 
-## Running the Application
+* **storage abstraction** - swap Google Drive for another service by providing a new `StorageProvider` without touching the business code.
+* **horizontal scaling** - stateless API & processor nodes let us scale with `docker compose --scale`, while nginx + Docker DNS handle load‑balancing.
+* **background queues** - BullMQ lets us handle the file upload in the background, so that the client won't wait minutes for the http request to complete.
+* **neverthrow** - literally, never throw ;) it lets us not throw Nest.js exceptions in the domain and pass this work to the API layer which is super-convenient for the framework-agnostic style.
+* **pino logger** - a great tool for logs, which keeps them structured, provides them in a JSON format (and does pretty logging for local development) which is highly preferred by many log monitors
+* **and... pretty docs** - cool Swagger replacement, just check it out, and you will get it ;)
 
-### Development
+---
 
-```bash
-npm run start:dev
-```
+## getting started
 
-### Production
+### my machine prerequisites
 
-```bash
-npm run build
-npm run start:prod
-```
+* **Docker 27.4.0** (+ compose)
+* **Node.js 24.1.0**
 
-## API Documentation
+### local setup
 
-Once the application is running, you can access the Swagger API documentation at:
+1. **env** - copy `.env.example` → `.env` and fill values (Google Drive API service account credentials, and change PostgreSQL/Redis if needed).
+2. **stack** - launch: `docker compose up --scale api=3 --scale processor=3 -d`.
+3. **migrations** - after Postgres is healthy:
 
-```
-http://localhost:3000/api/docs
-```
+   ```bash
+   # from host (uses container network creds)
+   docker compose exec api npm run db:migrate
+   ```
+4. **browse docs** - `http://localhost:3000/docs`.
 
-## API Endpoints
-
-### GET /api/files
-
-Get all files with pagination.
-
-Query Parameters:
-- `page` (optional): Page number (default: 1)
-- `limit` (optional): Number of items per page (default: 10)
-
-### GET /api/files/:id
-
-Get a file by ID.
-
-## Environment Variables
-
-The application uses the following environment variables:
-
-- `PORT`: The port on which the application will run (default: 3000)
-- `NODE_ENV`: The environment in which the application is running (development, staging, production)
-- `API_PREFIX`: The prefix for API routes (default: api)
-- `POSTGRES_HOST`: PostgreSQL host
-- `POSTGRES_PORT`: PostgreSQL port (default: 5432)
-- `POSTGRES_DB`: PostgreSQL database name
-- `POSTGRES_USER`: PostgreSQL username
-- `POSTGRES_PASSWORD`: PostgreSQL password
-- `POSTGRES_SSL`: Whether to use SSL for database connection (default: false)
-- `THROTTLE_TTL`: Time-to-live for throttling in seconds (default: 60)
-- `THROTTLE_LIMIT`: Maximum number of requests within TTL (default: 10)
-- `LOG_LEVEL`: Logging level (debug, info, warn, error) (default: info)
+> **tip**: want to tweak the schema? edit `src/infra/database/schema`, then:
+>
+> ```bash
+> npm run db:generate   # creates migration in /drizzle
+> npm run db:migrate    # applies it
+> ```
